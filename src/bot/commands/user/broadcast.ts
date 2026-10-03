@@ -202,25 +202,36 @@ composer.callbackQuery(/^bc:start:(\d+)$/, async (ctx) => {
 
   await ctx.answerCallbackQuery("Broadcast dimulai!");
 
+  const initialText = buildProgressText(list.name, accountLabel, { accountId, total: targets.length, sent: 0, failed: 0, skipped: 0, isRunning: true, isDone: false, failedGroups: [], startedAt: new Date(), round: 1, isLooping: true });
   const progressMsg = await ctx.editMessageText(
-    buildProgressText(list.name, accountLabel, { accountId, total: targets.length, sent: 0, failed: 0, skipped: 0, isRunning: true, isDone: false, failedGroups: [], startedAt: new Date(), round: 1, isLooping: true }),
+    initialText,
     { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🛑 Stop", `bc:stop:${accountId}`) }
   );
+
+  let lastEditTime = Date.now();
+  let lastText = initialText;
 
   const botInstance = await getBot();
   startBroadcastForAccount(userId, accountId, pending.message, targets, list.name, listId, botInstance, async (progress) => {
     try {
-      await ctx.api.editMessageText(
-        ctx.chat!.id,
-        (progressMsg as any).message_id,
-        buildProgressText(list.name, accountLabel, progress),
-        {
-          parse_mode: "Markdown",
-          reply_markup: (progress.isDone || !progress.isRunning)
-            ? undefined
-            : new InlineKeyboard().text("🛑 Stop", `bc:stop:${accountId}`),
+      if (progress.isDone || !progress.isRunning || Date.now() - lastEditTime >= 3500) {
+        const newText = buildProgressText(list.name, accountLabel, progress);
+        if (newText !== lastText) {
+          await ctx.api.editMessageText(
+            ctx.chat!.id,
+            (progressMsg as any).message_id,
+            newText,
+            {
+              parse_mode: "Markdown",
+              reply_markup: (progress.isDone || !progress.isRunning)
+                ? undefined
+                : new InlineKeyboard().text("🛑 Stop", `bc:stop:${accountId}`),
+            }
+          );
+          lastEditTime = Date.now();
+          lastText = newText;
         }
-      );
+      }
     } catch { /* abaikan error edit */ }
   }).catch(async (err) => {
     await ctx.reply(`❌ Broadcast error: ${err?.message || "Unknown"}`);

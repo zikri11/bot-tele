@@ -1,5 +1,21 @@
+# Dependencies & Build Output
 node_modules/
 dist/
 data/
+
+# Environment Variables & Secrets
 .env
+.env.*
+!.env.example
+
+# Local Databases & Caches
 *.db
+*.db-shm
+*.db-wal
+
+# Private Documentation, Plans & Scratches
+PLAN/
+scratch/
+projek.md
+*.pdf
+

@@ -70,7 +70,7 @@ composer.callbackQuery(/^rmt:use:(\d+)$/, async (ctx) => {
 
   const message = `👋🏻 Hai!, *${firstName}*\n` +
     `Selamat datang di *${config.botName}*\n\n` +
-    `Saya dapat membuat Userbot secara instan\n\n` +
+    `Asisten Pengelolaan & Pengiriman Pesan Terjadwal\n\n` +
     `Owner: ${config.botOwner}\n` +
     `Channel: ${config.botChannel}\n\n` +
     `✅Berhasil Remot Akun`;

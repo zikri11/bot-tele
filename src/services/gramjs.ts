@@ -65,6 +65,8 @@ const loginStates = new Map<number, LoginState>();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function getState(userId: number): LoginState {
   if (!loginStates.has(userId)) {
     loginStates.set(userId, { step: "idle" });
@@ -99,9 +101,9 @@ function createClient(existingSession = ""): TelegramClient {
       retryDelay: 1000,
       useWSS: true,
       timeout: 30,
-      deviceModel: "Desktop",
-      systemVersion: "Windows 10",
-      appVersion: "1.0.0",
+      deviceModel: "Xiaomi 2201116SG",
+      systemVersion: "SDK 33",
+      appVersion: "10.14.5 (4890)",
       langCode: "id",
       systemLangCode: "id",
       baseLogger: new QuietLogger(),
@@ -124,6 +126,8 @@ export async function startLogin(
 
   try {
     await client.connect();
+
+    await delay(1200 + Math.floor(Math.random() * 800));
 
     const result = await client.invoke(
       new Api.auth.SendCode({
@@ -193,6 +197,8 @@ export async function submitOtp(
   }
 
   try {
+    await delay(1500 + Math.floor(Math.random() * 1000));
+
     await state.client.invoke(
       new Api.auth.SignIn({
         phoneNumber: state.phone,
@@ -242,6 +248,8 @@ export async function submitPassword(
   }
 
   try {
+    await delay(1200 + Math.floor(Math.random() * 800));
+
     await state.client.signInWithPassword(
       { apiId: config.apiId, apiHash: config.apiHash },
       {
@@ -531,7 +539,12 @@ export async function handleSessionRevoked(accountId: number, bot: any): Promise
   const senderBot = notifyBot || bot;
   try {
     await senderBot.api.sendMessage(userId, message, { parse_mode: "Markdown" });
-  } catch (err) {
+  } catch (err: any) {
+    const errMsg = String(err?.message || err).toLowerCase();
+    if (errMsg.includes("bot was blocked") || errMsg.includes("user is deactivated")) {
+      console.warn(`[Session Revoked] User ${userId} memblokir bot atau akun tidak aktif. Melewati fallback.`);
+      return;
+    }
     try {
       await bot.api.sendMessage(userId, message, { parse_mode: "Markdown" });
     } catch (err2) {

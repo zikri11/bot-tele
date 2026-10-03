@@ -59,6 +59,8 @@ composer.callbackQuery("sj:trigger_login", async (ctx) => {
   await ctx.answerCallbackQuery();
   await ctx.reply(
     "🔑 *Login Akun Telegram*\n\n" +
+      "⚠️ *PENTING DEMI KEAMANAN AKUN:*\n" +
+      "Pastikan akun Anda *SUDAH MENGAKTIFKAN 2FA (Verifikasi 2 Langkah)* di aplikasi resmi Telegram sebelum login agar akun aman dari pembatasan/limit otomatis.\n\n" +
       "Tap tombol di bawah untuk membagikan nomor HP Anda.",
     { parse_mode: "Markdown", reply_markup: requestContactKeyboard() }
   );
@@ -92,6 +94,8 @@ composer.callbackQuery(/^svc:(\d+):sewa_jasa$/, async (ctx) => {
   await ctx.answerCallbackQuery();
   await ctx.reply(
     "🔑 *Login Akun Telegram*\n\n" +
+      "⚠️ *PENTING DEMI KEAMANAN AKUN:*\n" +
+      "Pastikan akun Anda *SUDAH MENGAKTIFKAN 2FA (Verifikasi 2 Langkah)* di aplikasi resmi Telegram sebelum login agar akun aman dari pembatasan/limit otomatis.\n\n" +
       "Tap tombol di bawah untuk membagikan nomor HP Anda.",
     { parse_mode: "Markdown", reply_markup: requestContactKeyboard() }
   );
@@ -129,6 +133,8 @@ composer.on("message:contact", async (ctx) => {
   await ctx.reply(
     `📱 *Konfirmasi Login*\n\n` +
       `Nomor: \`${phone}\`\n\n` +
+      `⚠️ *PENTING DEMI KEAMANAN AKUN:*\n` +
+      `Pastikan akun Anda *SUDAH MENGAKTIFKAN 2FA (Verifikasi 2 Langkah)* di aplikasi resmi Telegram sebelum login agar akun aman dari pembatasan/limit otomatis.\n\n` +
       `Kami akan mengirim kode OTP ke nomor ini melalui Telegram.\n` +
       `Lanjutkan?`,
     { parse_mode: "Markdown", reply_markup: confirmMenu }
@@ -471,6 +477,8 @@ composer.command("login", async (ctx) => {
 
   await ctx.reply(
     "🔑 *Login Akun Telegram*\n\n" +
+      "⚠️ *PENTING DEMI KEAMANAN AKUN:*\n" +
+      "Pastikan akun Anda *SUDAH MENGAKTIFKAN 2FA (Verifikasi 2 Langkah)* di aplikasi resmi Telegram sebelum login agar akun aman dari pembatasan/limit otomatis.\n\n" +
       "Tap tombol di bawah untuk membagikan nomor HP Anda.",
     { parse_mode: "Markdown", reply_markup: requestContactKeyboard() }
   );

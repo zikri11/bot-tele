@@ -11,6 +11,7 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@grammyjs/auto-retry": "^2.0.2",
     "big-integer": "^1.6.52",
     "dotenv": "^16.4.7",
     "drizzle-orm": "0.36.4",

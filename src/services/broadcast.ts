@@ -6,10 +6,10 @@ import {
   incrementAccountBroadcastRound,
   getAccountGrantees,
 } from "./gramjs";
-import { getUserSettings, calculateDelay, getNotifySettings } from "./userSettings";
+import { getUserSettings, calculateDelay, getNotifySettings, setNotifyEnabled } from "./userSettings";
 import { getActiveSubscriptions } from "./subscription";
 import { getGroupListItems } from "./groupList";
-import { Bot, InputFile } from "grammy";
+import { Bot, InputFile, InlineKeyboard } from "grammy";
 
 // ─── Tipe ─────────────────────────────────────────────────────────────────────
 
@@ -88,6 +88,8 @@ async function runOneBroadcastRound(
   progress.failedGroups = [];
   progress.startedAt = new Date();
 
+  let lastProgressUpdate = Date.now();
+
   for (const target of targets) {
     if (stopFlags.get(accountId)) {
       progress.skipped = targets.length - progress.sent - progress.failed;
@@ -117,17 +119,22 @@ async function runOneBroadcastRound(
       if (errMsg.includes("FLOOD_WAIT")) {
         const seconds = parseInt(errMsg.match(/FLOOD_WAIT_(\d+)/)?.[1] || "30");
         await onProgress({ ...progress });
+        lastProgressUpdate = Date.now();
         await delay((seconds + 2) * 1000);
         continue;
       }
     }
 
-    if ((progress.sent + progress.failed) % 5 === 0) {
+    if (Date.now() - lastProgressUpdate >= 3500) {
       await onProgress({ ...progress });
+      lastProgressUpdate = Date.now();
     }
 
     if (!stopFlags.get(accountId) && delaySettings.mode === "per_group") {
-      await delay(calculateDelay(delaySettings));
+      const baseDelay = calculateDelay(delaySettings);
+      const jitter = Math.floor(Math.random() * 2000) - 1000;
+      const actualDelay = Math.max(2000, baseDelay + jitter);
+      await delay(actualDelay);
     }
   }
 
@@ -308,7 +315,7 @@ async function sendRoundNotification(
   }
   
   const botUsername = bot.botInfo?.username || "CVunBOT";
-  summary += `\nUserBot by @${botUsername}`;
+  summary += `\nLaporan oleh @${botUsername}`;
 
   // 1. Send via Admin target using Userbot (sent to grantees of this account)
   if (notify.targets.includes("admin")) {
@@ -376,8 +383,14 @@ async function sendRoundNotification(
   if (notify.targets.includes("self")) {
     const { notifyBot } = await import("../bot/index");
     const senderBot = notifyBot || bot;
+    const muteKeyboard = new InlineKeyboard().text('🔕 Matikan Notifikasi', 'ntf:quick_mute');
+
     try {
-      await senderBot.api.sendMessage(userId, summary, { parse_mode: "HTML" });
+      await senderBot.api.sendMessage(userId, summary, {
+        parse_mode: "HTML",
+        reply_markup: muteKeyboard,
+      });
+
       if (progress.failedGroups.length > 30) {
         const content = progress.failedGroups
           .map((f, i) => `${i + 1}. ${f.title}\n   Alasan: ${f.reason}`)
@@ -388,7 +401,17 @@ async function sendRoundNotification(
           { caption: `❌ Detail kegagalan putaran ${progress.round}` }
         );
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errMsg = String(err?.message || err).toLowerCase();
+      if (
+        errMsg.includes("bot was blocked by the user") ||
+        errMsg.includes("user is deactivated") ||
+        errMsg.includes("chat not found")
+      ) {
+        console.warn(`[notify:self] User ${userId} telah memblokir bot atau akun tidak aktif. Menonaktifkan notifikasi otomatis.`);
+        await setNotifyEnabled(userId, false);
+        return;
+      }
       console.error(`[notify:self] Gagal kirim ke user ${userId}:`, err);
     }
   }

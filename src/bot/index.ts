@@ -1,4 +1,5 @@
 import { Bot, InlineKeyboard } from "grammy";
+import { autoRetry } from "@grammyjs/auto-retry";
 import { config } from "../config";
 import adminCommands from "./commands/admin";
 import userCommands from "./commands/user";
@@ -12,11 +13,17 @@ import { handleBergabungGrup } from "./commands/user/join_groups";
 import { handleControl } from "./commands/user/control";
 import { handleRemoteMenu } from "./commands/user/remote";
 import { getGrantedAccounts, getActiveAccount } from "../services/gramjs";
+import { setNotifyEnabled } from "../services/userSettings";
 import { pool } from "../db";
 
 // Inisialisasi bot
 export const bot = new Bot(config.botToken);
 export const notifyBot = config.notifyBotToken ? new Bot(config.notifyBotToken) : null;
+
+bot.api.config.use(autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 60 }));
+if (notifyBot) {
+  notifyBot.api.config.use(autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 60 }));
+}
 
 // ─── Setup database tables (auto-create kalau belum ada) ──────────────────────
 async function setupDatabase() {
@@ -159,7 +166,7 @@ bot.command("start", async (ctx) => {
   let message =
     `👋🏻 Hai!, *${firstName}*\n` +
     `Selamat datang di *${config.botName}*\n\n` +
-    `Saya dapat membuat Userbot secara instan\n\n` +
+    `Asisten Pengelolaan & Pengiriman Pesan Terjadwal\n\n` +
     `Owner: ${config.botOwner}\n` +
     `Channel: ${config.botChannel}\n`;
 
@@ -306,6 +313,23 @@ bot.callbackQuery("start:endsub", async (ctx) => {
   await ctx.reply("Gunakan /endsub untuk menghentikan langganan aktif Anda.");
 });
 
+// ─── Callback: Tombol Quick Mute Notifikasi ──────────────────────────────────
+const handleQuickMute = async (ctx: any) => {
+  const userId = ctx.from?.id;
+  if (userId) {
+    await setNotifyEnabled(userId, false);
+  }
+  await ctx.answerCallbackQuery("Notifikasi dinonaktifkan.");
+  await ctx.reply(
+    "🔕 Notifikasi berhasil dinonaktifkan. Anda dapat mengaktifkannya kembali melalui menu di Bot Utama kapan saja."
+  );
+};
+
+bot.callbackQuery("ntf:quick_mute", handleQuickMute);
+if (notifyBot) {
+  notifyBot.callbackQuery("ntf:quick_mute", handleQuickMute);
+}
+
 // ─── Helper: cek langganan aktif sebelum akses fitur ─────────────────────────
 async function checkActiveSub(ctx: any): Promise<boolean> {
   const userId = ctx.from?.id;
@@ -376,7 +400,7 @@ bot.on("message", async (ctx) => {
   await ctx.reply(
     `👋🏻 Hai!, *${firstName}*\n` +
       `Selamat datang di *${config.botName}*\n\n` +
-      `Saya dapat membuat Userbot secara instan\n\n` +
+      `Asisten Pengelolaan & Pengiriman Pesan Terjadwal\n\n` +
       `Owner: ${config.botOwner}\n` +
       `Channel: ${config.botChannel}\n\n` +
       `/start - untuk memulai`,
@@ -450,23 +474,27 @@ async function main() {
   }
 
   if (notifyBot) {
-    notifyBot.command("start", async (ctx) => {
-      await ctx.reply(
-        `👋 *Halo, ${ctx.from?.first_name || "Pengguna"}!*\n\n` +
-        `Saya adalah *Notifikasi Bot by @JavaUserbots*.\n` +
-        `Saya akan mengirimkan laporan broadcast Anda langsung ke sini.\n\n` +
-        `Pastikan status bot ini tetap aktif agar notifikasi broadcast dapat terkirim!`,
-        { parse_mode: "Markdown" }
-      );
-    });
+    try {
+      notifyBot.command("start", async (ctx) => {
+        await ctx.reply(
+          `👋 *Halo, ${ctx.from?.first_name || "Pengguna"}!*\n\n` +
+          `Saya adalah *Notifikasi Bot ${config.botName}* (@${config.notifyBotUsername}).\n` +
+          `Saya akan mengirimkan laporan broadcast Anda langsung ke sini.\n\n` +
+          `Pastikan status bot ini tetap aktif agar notifikasi broadcast dapat terkirim!`,
+          { parse_mode: "Markdown" }
+        );
+      });
 
-    notifyBot.start({
-      onStart: (botInfo) => {
-        console.log(`✅ Notification Bot @${botInfo.username} is running!`);
-      },
-    }).catch(err => {
-      console.error("Failed to start notification bot:", err);
-    });
+      notifyBot.start({
+        onStart: (botInfo) => {
+          console.log(`✅ Notification Bot @${botInfo.username} is running!`);
+        },
+      }).catch((err) => {
+        console.error("Failed to start notification bot:", err);
+      });
+    } catch (err) {
+      console.error("Failed to initialize notification bot:", err);
+    }
   }
 
   await bot.start({
