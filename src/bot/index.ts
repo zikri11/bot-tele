@@ -505,7 +505,12 @@ async function main() {
   });
 }
 
-main().catch((err) => {
-  console.error("Failed to start bot:", err);
+main().catch(async (err) => {
+  const errMsg = String(err?.message || err);
+  console.error('❌ Failed to start bot:', err);
+  if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
+    console.error('⚠️ [CRITICAL] Token bot tidak valid atau telah dicabut (401 Unauthorized). Menunda proses selama 30 detik untuk mencegah PM2 crash-loop...');
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+  }
   process.exit(1);
 });
